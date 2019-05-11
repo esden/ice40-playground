@@ -33,8 +33,8 @@
 
 `default_nettype none
 
-//`define STREAM
-`define PATTERN
+`define STREAM
+//`define PATTERN
 //`define VIDEO
 
 module top (
@@ -91,7 +91,7 @@ module top (
 	localparam integer N_BANKS  = 2;
 `endif
 	localparam integer N_ROWS   = 32;
-	localparam integer N_COLS   = 64;
+	localparam integer N_COLS   = 64 * 6;
 	localparam integer N_CHANS  = 3;
 	localparam integer N_PLANES = 10;
 	localparam integer BITDEPTH = 16;
