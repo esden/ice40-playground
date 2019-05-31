@@ -155,27 +155,41 @@ module pgen #(
 	// Front-Buffer write
 	// ------------------
 
-	// Generate R/B channels by taking 8 bits off the row/col counters
-	// (and wrapping to the MSBs if those are shorter than 8 bits
-	genvar i;
-	generate
-		for (i=0; i<8; i=i+1)
-		begin
-			assign color[0][7-i] = cnt_row[LOG_N_ROWS-1-(i%LOG_N_ROWS)];
-			assign color[2][7-i] = cnt_col[LOG_N_COLS-1-(i%LOG_N_COLS)];
-		end
-	endgenerate
 
-	// Moving green lines
-	wire [3:0] c0 = frame[7:4];
-	wire [3:0] c1 = frame[7:4] + 1;
+    parameter T = 1;  // Animation rate frame >> T.
+	reg [11-T:0] fhi;
+	always @(posedge clk) begin
+		fhi <= frame[T:11];
+	end
 
-	wire [3:0] a0 = 4'hf - frame[3:0];
-	wire [3:0] a1 = frame[3:0];
+	// Pick a different color for each face.
+    wire [2:0] cc = cnt_col[6+:3] + 3'b1;
+	wire r = cc[0];
+	wire g = cc[1];
+	wire b = cc[2];
 
-	assign color[1] =
-		(((cnt_col[3:0] == c0) || (cnt_row[3:0] == c0)) ? {a0, a0} : 8'h00) +
-		(((cnt_col[3:0] == c1) || (cnt_row[3:0] == c1)) ? {a1, a1} : 8'h00);
+	// Fill square with inner border p0 from the center, outer border
+	// p1 from the center.
+	reg [5:0] p0;
+	reg [5:0] p1;
+	always @(posedge clk) begin
+		p0 <= ~|(fhi >> 4) ? {fhi[4:0], 1'b0} : (32+16-1) - fhi[5:0];
+	end
+	always @(posedge clk) begin
+		p1 <= ~|(fhi >> 4) ? p0 + 4 : fhi < (32+16) ? p0 + 1 : 0;
+	end
+
+	wire [4:0] dx = cnt_col[5] ? cnt_col[4:0] : 31 - cnt_col[4:0];
+	wire [4:0] dy = cnt_row[5] ? cnt_row[4:0] : 31 - cnt_row[4:0];
+
+	wire [7:0] lum = {p0[5:0], p0[5:4]};
+
+	wire on = (p0 <= dx || p0 <= dy) && dx < p1 && dy < p1;
+
+	assign color[0] = on && r ? lum : 0;
+	assign color[1] = on && g ? lum : 0;
+	assign color[2] = on && b ? lum : 0;
+
 
 	// Write enable and address
 	assign fbw_wren = fsm_state == ST_GEN_ROW;
