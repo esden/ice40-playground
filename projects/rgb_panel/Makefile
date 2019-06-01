@@ -4,6 +4,7 @@ PROJ = rgb_panel
 PROJ_DEPS := hub75 spi_flash spi_slave
 PROJ_RTL_SRCS := $(addprefix rtl/, \
 	pgen.v \
+	src_select.v \
 	sysmgr.v \
 	vgen.v \
 	vstream.v \

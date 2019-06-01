@@ -34,7 +34,7 @@
 `default_nettype none
 
 `define STREAM
-//`define PATTERN
+`define PATTERN
 //`define VIDEO
 
 module top (
@@ -86,15 +86,16 @@ module top (
 
 	// Params
 `ifdef BOARD_ICEBREAKER_SINGLE2X
-	localparam integer N_BANKS  = 4;
+	localparam integer N_BANKS         = 4;
 `else
-	localparam integer N_BANKS  = 2;
+	localparam integer N_BANKS         = 2;
 `endif
-	localparam integer N_ROWS   = 32;
-	localparam integer N_COLS   = 64 * 6;
-	localparam integer N_CHANS  = 3;
-	localparam integer N_PLANES = 10;
-	localparam integer BITDEPTH = 16;
+	localparam integer N_ROWS          = 32;
+	localparam integer N_COLS          = 64 * 6;
+	localparam integer N_CHANS         = 3;
+	localparam integer N_PLANES        = 10;
+	localparam integer BITDEPTH        = 16;
+	localparam integer INACTIVITY_TIME = 1000;
 
 	localparam integer LOG_N_BANKS = $clog2(N_BANKS);
 	localparam integer LOG_N_ROWS  = $clog2(N_ROWS);
@@ -199,9 +200,105 @@ module top (
 			ctrl_run <= ctrl_run | frame_swap;
 
 
+`ifdef STREAM
+
+  `ifdef PATTERN
+
+	wire [LOG_N_BANKS-1:0] p_fbw_bank_addr;
+	wire [LOG_N_ROWS-1:0]  p_fbw_row_addr;
+	wire p_fbw_row_store;
+	wire p_fbw_row_swap;
+
+	wire [BITDEPTH-1:0] p_fbw_data;
+	wire [LOG_N_COLS-1:0] p_fbw_col_addr;
+	wire p_fbw_wren;
+	wire p_frame_swap;
+
+	wire [LOG_N_BANKS-1:0] s_fbw_bank_addr;
+	wire [LOG_N_ROWS-1:0]  s_fbw_row_addr;
+	wire s_fbw_row_store;
+	wire s_fbw_row_swap;
+	wire s_frame_swap;
+
+	wire [BITDEPTH-1:0] s_fbw_data;
+	wire [LOG_N_COLS-1:0] s_fbw_col_addr;
+	wire s_fbw_wren;
+
+ 	src_select #(
+		.N_ROWS(N_BANKS * N_ROWS),
+		.N_COLS(N_COLS),
+		.BITDEPTH(BITDEPTH),
+		.INACTIVITY_TIME(INACTIVITY_TIME)
+	) src_select_I (
+		.a_fbw_row_addr({s_fbw_bank_addr, s_fbw_row_addr}),
+	    .a_fbw_row_store(s_fbw_row_store),
+	    .a_fbw_row_swap(s_fbw_row_swap),
+	    .a_fbw_data(s_fbw_data),
+	    .a_fbw_col_addr(s_fbw_col_addr),
+	    .a_fbw_wren(s_fbw_wren),
+	    .a_frame_swap(s_frame_swap),
+	    .b_fbw_row_addr({p_fbw_bank_addr, p_fbw_row_addr}),
+	    .b_fbw_row_store(p_fbw_row_store),
+	    .b_fbw_row_swap(p_fbw_row_swap),
+	    .b_fbw_data(p_fbw_data),
+	    .b_fbw_col_addr(p_fbw_col_addr),
+	    .b_fbw_wren(p_fbw_wren),
+	    .b_frame_swap(p_frame_swap),
+	    .fbw_row_addr({fbw_bank_addr, fbw_row_addr}),
+	    .fbw_row_store(fbw_row_store),
+	    .fbw_row_swap(fbw_row_swap),
+	    .fbw_data(fbw_data),
+	    .fbw_col_addr(fbw_col_addr),
+	    .fbw_wren(fbw_wren),
+	    .frame_swap(frame_swap),
+	    .clk(clk),
+	    .rst(rst)
+	);
+
+	vstream #(
+		.N_ROWS(N_BANKS * N_ROWS),
+		.N_COLS(N_COLS),
+		.BITDEPTH(BITDEPTH)
+	) stream_I (
+		.spi_mosi(slave_mosi),
+		.spi_miso(slave_miso),
+		.spi_cs_n(slave_cs_n),
+		.spi_clk(slave_clk),
+		.fbw_row_addr({s_fbw_bank_addr, s_fbw_row_addr}),
+		.fbw_row_store(s_fbw_row_store),
+		.fbw_row_rdy(fbw_row_rdy),
+		.fbw_row_swap(s_fbw_row_swap),
+		.fbw_data(s_fbw_data),
+		.fbw_col_addr(s_fbw_col_addr),
+		.fbw_wren(s_fbw_wren),
+		.frame_swap(s_frame_swap),
+		.frame_rdy(frame_rdy),
+		.clk(clk),
+		.rst(rst)
+	);
+
+	pgen #(
+		.N_ROWS(N_BANKS * N_ROWS),
+		.N_COLS(N_COLS),
+		.BITDEPTH(BITDEPTH)
+	) pgen_I (
+		.fbw_row_addr({p_fbw_bank_addr, p_fbw_row_addr}),
+		.fbw_row_store(p_fbw_row_store),
+		.fbw_row_rdy(fbw_row_rdy),
+		.fbw_row_swap(p_fbw_row_swap),
+		.fbw_data(p_fbw_data),
+		.fbw_col_addr(p_fbw_col_addr),
+		.fbw_wren(p_fbw_wren),
+		.frame_swap(p_frame_swap),
+		.frame_rdy(frame_rdy),
+		.clk(clk),
+		.rst(rst)
+	);
+
+  `else // STREAM and not PATTERN
+
 	// Host Streaming
 	// --------------
-`ifdef STREAM
 	vstream #(
 		.N_ROWS(N_BANKS * N_ROWS),
 		.N_COLS(N_COLS),
@@ -223,13 +320,16 @@ module top (
 		.clk(clk),
 		.rst(rst)
 	);
-`endif
 
+  `endif // PATTERN
+
+`else // not STREAM
+
+  `ifdef PATTERN
 
 	// Pattern generator
 	// -----------------
 
-`ifdef PATTERN
 	pgen #(
 		.N_ROWS(N_BANKS * N_ROWS),
 		.N_COLS(N_COLS),
@@ -247,8 +347,10 @@ module top (
 		.clk(clk),
 		.rst(rst)
 	);
-`endif
 
+  `endif // PATTERN
+
+`endif // not STREAM
 
 	// Video generator (from SPI flash)
 	// ---------------
