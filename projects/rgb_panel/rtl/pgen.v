@@ -156,14 +156,14 @@ module pgen #(
 	// ------------------
 
 
-    parameter T = 1;  // Animation rate frame >> T.
+	parameter T = 1;  // Animation rate is (frame >> T).
 	reg [11-T:0] fhi;
 	always @(posedge clk) begin
 		fhi <= frame[T:11];
 	end
 
 	// Pick a different color for each face.
-    wire [2:0] cc = cnt_col[6+:3] + 3'b1;
+	wire [2:0] cc = cnt_col[6+:3] + 3'b1;
 	wire r = cc[0];
 	wire g = cc[1];
 	wire b = cc[2];
@@ -198,11 +198,11 @@ module pgen #(
 	// Map to color
 	generate
 		if (BITDEPTH == 8)
-			assign fbw_data = { color[2][7:5], color[1][7:5], color[0][7:6] };
+			assign fbw_data = { color[0][7:5], color[1][7:5], color[2][7:6] };
 		else if (BITDEPTH == 16)
-			assign fbw_data = { color[2][7:3], color[1][7:2], color[0][7:3] };
+			assign fbw_data = { color[0][7:3], color[1][7:2], color[2][7:3] };
 		else if (BITDEPTH == 24)
-			assign fbw_data = { color[2], color[1], color[0] };
+			assign fbw_data = { color[0], color[1], color[2] };
 	endgenerate
 
 
