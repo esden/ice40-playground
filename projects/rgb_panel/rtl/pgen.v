@@ -33,6 +33,10 @@
 
 `default_nettype none
 
+//`define MOVING_PLAID
+//`define SIMPLE_SQUAREBURST
+`define FULL_SQUAREBURST
+
 module pgen #(
 	parameter integer N_ROWS   = 64,	// # of rows (must be power of 2!!!)
 	parameter integer N_COLS   = 64,	// # of columns
@@ -155,11 +159,37 @@ module pgen #(
 	// Front-Buffer write
 	// ------------------
 
+`ifdef MOVING_PLAID
 
-	parameter T = 1;  // Animation rate is (frame >> T).
-	reg [11-T:0] fhi;
+	genvar i;
+	generate
+		for (i = 0; i < 8; i=i+1)
+		begin
+			assign color[0][7-i] = cnt_row[LOG_N_ROWS-1-(i%LOG_N_ROWS)];
+			assign color[2][7-i] = cnt_col[LOG_N_COLS-1-(i%LOG_N_COLS)];
+		end
+	endgenerate
+
+	// Moving green lines
+	wire [3:0] c0 = frame[7:4];
+	wire [3:0] c1 = frame[7:4] + 1;
+
+	wire [3:0] a0 = 4'hf - frame[3:0];
+	wire [3:0] a1 = frame[3:0];
+
+	assign color[1] =
+		(((cnt_col[3:0] == c0) || (cnt_row[3:0] == c0)) ? {a0, a0} : 8'h00) +
+		(((cnt_col[3:0] == c1) || (cnt_row[3:0] == c1)) ? {a1, a1} : 8'h00);
+
+`endif
+
+`ifdef SIMPLE_SQUAREBURST
+
+	parameter T = 1;   // Animation rate is (frame >> T).
+	parameter T2 = 8; // Animation repeats every (1 << t2) frames.
+	reg [T2-T:0] fhi;
 	always @(posedge clk) begin
-		fhi <= frame[T:11];
+		fhi <= frame[T2:T];
 	end
 
 	// Pick a different color for each face.
@@ -182,7 +212,8 @@ module pgen #(
 	wire [4:0] dx = cnt_col[5] ? cnt_col[4:0] : 31 - cnt_col[4:0];
 	wire [4:0] dy = cnt_row[5] ? cnt_row[4:0] : 31 - cnt_row[4:0];
 
-	wire [7:0] lum = {p0[5:0], p0[5:4]};
+	wire [4:0] l0 = dx > dy ? dx : dy;
+	wire [7:0] lum = {l0[4:0], l0[4:2]};
 
 	wire on = (p0 <= dx || p0 <= dy) && dx < p1 && dy < p1;
 
@@ -190,6 +221,57 @@ module pgen #(
 	assign color[1] = on && g ? lum : 0;
 	assign color[2] = on && b ? lum : 0;
 
+`endif
+
+`ifdef FULL_SQUAREBURST
+
+	parameter T = 0;  // Animation rate is (frame >> T).
+	parameter T2 = 8; // Animation repeats every (1 << t2) frames.
+	reg[7:0] fhi;
+	always @(posedge clk) begin
+		fhi <= {8'b0, frame[T2:T]};
+	end
+
+	// Pick a different color for each face.
+	wire [2:0] cc = cnt_col[6+:3] + 3'b1;
+	wire r = cc[0];
+	wire g = cc[1];
+	wire b = cc[2];
+
+	reg [4:0] p0, p1, p2, p3;
+
+	always @(posedge clk) begin
+		if (fhi < 32) begin
+			p0 <= fhi + 0;
+			p1 <= fhi + 1;
+			p2 <= fhi + 2;
+			p3 <= fhi + 3;
+		end
+		else begin
+			p0 <= fhi <= 32 + 128/2 ? 16+32 - (2 * fhi >> 2) : 0;
+			p1 <= fhi <= 32 + 128/3 ? 24+32 - (3 * fhi >> 2) : 0;
+			p2 <= fhi <= 32 + 128/4 ? 32+32 - (4 * fhi >> 2) : 0;
+			p3 <= fhi <= 32 + 128/5 ? 40+32 - (5 * fhi >> 2) : 0;
+		end
+	end
+
+	wire [4:0] dx = cnt_col[5] ? cnt_col[4:0] : 31 - cnt_col[4:0];
+	wire [4:0] dy = cnt_row[5] ? cnt_row[4:0] : 31 - cnt_row[4:0];
+
+	wire [4:0] l0 = dx > dy ? dx : dy;
+	wire [7:0] lum = {l0[4:0], l0[4:2]};
+
+	wire on0 = (dx == p0 && dy <= p0) || (dx <= p0 && dy == p0);
+	wire on1 = (dx == p1 && dy <= p1) || (dx <= p1 && dy == p1);
+	wire on2 = (dx == p2 && dy <= p2) || (dx <= p2 && dy == p2);
+	wire on3 = (dx == p3 && dy <= p3) || (dx <= p3 && dy == p3);
+	wire on = on0 | on1 | on2 | on3;
+
+	assign color[0] = on && r ? lum : 0;
+	assign color[1] = on && g ? lum : 0;
+	assign color[2] = on && b ? lum : 0;
+
+`endif
 
 	// Write enable and address
 	assign fbw_wren = fsm_state == ST_GEN_ROW;

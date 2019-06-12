@@ -19,7 +19,7 @@ BOARD ?= icebreaker-double
 DEVICE = up5k
 PACKAGE = sg48
 
-NEXTPNR_ARGS = --pre-pack data/clocks.py --freq 30
+NEXTPNR_ARGS = --pre-pack data/clocks.py --freq 12
 
 # Include default rules
 include ../../build/project-rules.mk
