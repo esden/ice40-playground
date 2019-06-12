@@ -186,7 +186,7 @@ module pgen #(
 `ifdef SIMPLE_SQUAREBURST
 
 	parameter T = 1;   // Animation rate is (frame >> T).
-	parameter T2 = 8; // Animation repeats every (1 << t2) frames.
+	parameter T2 = 11; // Animation repeats every (1 << t2) frames.
 	reg [T2-T:0] fhi;
 	always @(posedge clk) begin
 		fhi <= frame[T2:T];
@@ -226,10 +226,10 @@ module pgen #(
 `ifdef FULL_SQUAREBURST
 
 	parameter T = 0;  // Animation rate is (frame >> T).
-	parameter T2 = 8; // Animation repeats every (1 << t2) frames.
-	reg[7:0] fhi;
+	parameter T2 = 11; // Animation repeats every (1 << t2) frames.
+	reg [T2-T:0] fhi;
 	always @(posedge clk) begin
-		fhi <= {8'b0, frame[T2:T]};
+		fhi <= frame[T2:T];
 	end
 
 	// Pick a different color for each face.
