@@ -145,6 +145,7 @@ int main(int argc, char **argv)
 
 	bool verbose = false;
 	bool slow_clock = false;
+        bool loop = true;
 	const char *filename = NULL;
 	const char *devstr = NULL;
 	int ifnum = 0;
@@ -157,7 +158,7 @@ int main(int argc, char **argv)
 	/* Decode command line parameters */
 	int opt;
 	char *endptr;
-	while ((opt = getopt_long(argc, argv, "d:I:vs", long_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "d:I:vs1", long_options, NULL)) != -1) {
 		switch (opt) {
 		case 'd': /* device string */
 			devstr = optarg;
@@ -182,6 +183,9 @@ int main(int argc, char **argv)
 		case 's': /* use slow SPI clock */
 			slow_clock = true;
 			break;
+                case '1': /* no loop */
+                        loop = false;
+                        break;
 		case -2:
 			help(argv[0]);
 			return EXIT_SUCCESS;
@@ -236,7 +240,7 @@ int main(int argc, char **argv)
 	int flen = 64*llen;
 	uint8_t *buf = malloc(flen);
 
-	while (1) {
+        while (1) {
 		int cblen = 64 * (llen + 21);
 		char cmd_buf[cblen + 256];
 #if !LINE_AT_A_TIME
@@ -244,6 +248,9 @@ int main(int argc, char **argv)
 #endif
 		/* Read frame */
 		if (fread(buf, flen, 1, f) != 1) {
+                        if (!loop) {
+                                break;
+                        }
 			fseek(f, 0L, SEEK_SET);
 			continue;
 		}
@@ -340,7 +347,7 @@ int main(int argc, char **argv)
 		} while (((cmd_buf[0] | cmd_buf[1]) & 0x02) != 0x02);
 #endif
 		print_stats(verbose);
-	}
+	};
 
 
 	// ---------------------------------------------------------
