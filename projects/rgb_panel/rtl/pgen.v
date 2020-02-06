@@ -225,8 +225,8 @@ module pgen #(
 
 `ifdef FULL_SQUAREBURST
 
-	parameter T = 0;  // Animation rate is (frame >> T).
-	parameter T2 = 6; // Animation repeats every (1 << t2) frames.
+	parameter T = 2;  // Animation rate is (frame >> T).
+	parameter T2 = 8; // Animation repeats every (1 << t2) frames.
 	reg [T2-T:0] fhi;
 	always @(posedge clk) begin
 		fhi <= frame[T2:T];

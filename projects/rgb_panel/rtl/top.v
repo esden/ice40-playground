@@ -184,9 +184,11 @@ module top (
 		.cfg_pre_latch_len(8'h80),
 		.cfg_latch_len(8'h80),
 		.cfg_post_latch_len(8'h80),
-		// 11 -> 63.1fps
-		// 12 -> 59.1fps
-		.cfg_bcm_bit_len(8'd12),
+		// 1  -> 172.8fps
+		// 3  -> 129.9fps
+		// 11 ->  63.1fps
+		// 12 ->  59.1fps
+		.cfg_bcm_bit_len(8'h01),
 		.clk(clk),
 		.clk_2x(clk_2x),
 		.rst(rst)
